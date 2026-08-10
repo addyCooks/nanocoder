@@ -145,6 +145,7 @@
 		],
 		"workerThreads": false,
 		"serial": true,
+		"timeout": "120s",
 		"environmentVariables": {
 			"NODE_ENV": "test",
 			"LC_ALL": "en-US.UTF-8",

@@ -7,6 +7,20 @@ import type {TuneConfig} from '../types/config.js';
 import type {ApiCallRecord, Message} from '../types/core.js';
 import {usageCommand} from './usage.js';
 
+const renderedInstances: Array<ReturnType<typeof renderWithTheme>> = [];
+
+const renderTracked = (element: Parameters<typeof renderWithTheme>[0]) => {
+	const instance = renderWithTheme(element);
+	renderedInstances.push(instance);
+	return instance;
+};
+
+test.afterEach(() => {
+	for (const instance of renderedInstances.splice(0)) {
+		instance.unmount();
+	}
+});
+
 console.log(`\nusage.spec.tsx – ${React.version}`);
 
 /**
@@ -179,7 +193,7 @@ test('usage command renders without crashing', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	t.truthy(lastFrame());
 });
@@ -189,7 +203,7 @@ test('usage command displays provider name', async t => {
 	const metadata = createMockMetadata('openai', 'gpt-4');
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -201,7 +215,7 @@ test('usage command displays model name', async t => {
 	const metadata = createMockMetadata('anthropic', 'claude-3-opus');
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -213,7 +227,7 @@ test('usage command displays context usage header', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -225,7 +239,7 @@ test('usage command displays overall usage section', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -237,7 +251,7 @@ test('usage command displays category breakdown', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -249,7 +263,7 @@ test('usage command displays system prompt category', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -261,7 +275,7 @@ test('usage command displays user messages category', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -273,7 +287,7 @@ test('usage command displays assistant messages category', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -285,7 +299,7 @@ test('usage command displays tool messages category', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -297,7 +311,7 @@ test('usage command displays tool definitions category', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -309,7 +323,7 @@ test('usage command displays model information section', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -321,7 +335,7 @@ test('usage command displays recent activity section', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -333,7 +347,7 @@ test('usage command displays tokenizer name', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -346,7 +360,7 @@ test('usage command displays available tokens', async t => {
 	const metadata = createMockMetadata();
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -544,7 +558,7 @@ test('usage command shows Estimated Cost for a priced model', async t => {
 	const metadata = {...createMockMetadata('openai', 'gpt-4o')};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -557,7 +571,7 @@ test('usage command shows placeholder for a model without pricing', async t => {
 	const metadata = {...createMockMetadata('ollama', 'llama3.2:3b')};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -589,7 +603,7 @@ test('usage command shows per-provider breakdown for multi-provider history', as
 	};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -621,7 +635,7 @@ test('usage command hides per-provider for single-provider history', async t => 
 	};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -633,7 +647,7 @@ test('usage command keeps token display unchanged when pricing is missing', asyn
 	const metadata = {...createMockMetadata('openai', 'unknown-model-12345')};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -661,7 +675,7 @@ test('usage command computes cost from totalTokens-only history entries', async 
 	};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);
@@ -684,7 +698,7 @@ test('usage command computes cost from partial inputTokens-only history entries'
 	};
 
 	const result = await usageCommand.handler([], messages, metadata);
-	const {lastFrame} = renderWithTheme(result);
+	const {lastFrame} = renderTracked(result);
 
 	const output = lastFrame();
 	t.truthy(output);

@@ -12,6 +12,20 @@ import {
 } from '../markdown-parser/index';
 import AssistantMessage from './assistant-message';
 
+const renderedInstances: Array<ReturnType<typeof render>> = [];
+
+const renderTracked = (element: Parameters<typeof render>[0]) => {
+	const instance = render(element);
+	renderedInstances.push(instance);
+	return instance;
+};
+
+test.afterEach(() => {
+	for (const instance of renderedInstances.splice(0)) {
+		instance.unmount();
+	}
+});
+
 // Mock theme colors for testing
 const mockColors: any = {
 	primary: '#3b82f6',
@@ -49,7 +63,7 @@ const MockThemeProvider = ({children}: {children: React.ReactNode}) => {
 // ============================================================================
 
 test('AssistantMessage renders with basic message', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="Hello world" model="test-model" />
 		</MockThemeProvider>,
@@ -62,7 +76,7 @@ test('AssistantMessage renders with basic message', t => {
 });
 
 test('AssistantMessage renders with bold text', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="This is **bold** text" model="test-model" />
 		</MockThemeProvider>,
@@ -74,7 +88,7 @@ test('AssistantMessage renders with bold text', t => {
 });
 
 test('AssistantMessage renders with inline code', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage
 				message="Use `const` for constants"
@@ -90,7 +104,7 @@ test('AssistantMessage renders with inline code', t => {
 });
 
 test('AssistantMessage renders with HTML entities', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage
 				message="Price: &euro;100&nbsp;only"
@@ -113,7 +127,7 @@ test('AssistantMessage renders with markdown table', t => {
 | John | 30  |
 | Jane | 25  |`;
 
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message={message} model="test-model" />
 		</MockThemeProvider>,
@@ -130,7 +144,7 @@ test('AssistantMessage renders with markdown table', t => {
 });
 
 test('AssistantMessage renders with headings', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="# Main Heading" model="test-model" />
 		</MockThemeProvider>,
@@ -146,7 +160,7 @@ test('AssistantMessage renders with lists', t => {
 - Item 2
 - Item 3`;
 
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message={message} model="test-model" />
 		</MockThemeProvider>,
@@ -162,7 +176,7 @@ test('AssistantMessage renders with lists', t => {
 });
 
 test('AssistantMessage renders with blockquotes', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="> This is a quote" model="test-model" />
 		</MockThemeProvider>,
@@ -174,7 +188,7 @@ test('AssistantMessage renders with blockquotes', t => {
 });
 
 test('AssistantMessage renders with links', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage
 				message="Check [this link](https://example.com)"
@@ -198,7 +212,7 @@ This has **bold** and *italic* text.
 
 Price: &euro;50`;
 
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message={message} model="test-model" />
 		</MockThemeProvider>,
@@ -214,7 +228,7 @@ Price: &euro;50`;
 });
 
 test('AssistantMessage renders without crashing with empty message', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="" model="test-model" />
 		</MockThemeProvider>,
@@ -226,7 +240,7 @@ test('AssistantMessage renders without crashing with empty message', t => {
 });
 
 test('AssistantMessage renders model name correctly', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="Test" model="gpt-4" />
 		</MockThemeProvider>,
@@ -665,7 +679,7 @@ test('parseMarkdownParts inline code stays in text parts', t => {
 
 test('AssistantMessage renders code blocks without ┃ border', t => {
 	const message = 'Here is some code:\n```javascript\nconst answer = 42;\n```\nDone.';
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message={message} model="test-model" />
 		</MockThemeProvider>,
@@ -874,7 +888,7 @@ test('parseMarkdown converts <br> tags to newlines', t => {
 });
 
 test('AssistantMessage displays approximate token count', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="Hello world" model="test-model" />
 		</MockThemeProvider>,
@@ -889,7 +903,7 @@ test('AssistantMessage drops model header and token count under NonInteractiveRe
 	const {NonInteractiveRenderContext} = await import(
 		'../hooks/useNonInteractiveRender'
 	);
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<NonInteractiveRenderContext.Provider value={true}>
 				<AssistantMessage
@@ -946,7 +960,7 @@ Let me know what you'd like to work on.`;
 // ============================================================================
 
 test('AssistantMessage strips leading newlines', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="\n\nHello world" model="test-model" />
 		</MockThemeProvider>,
@@ -968,7 +982,7 @@ test('AssistantMessage strips leading newlines', t => {
 });
 
 test('AssistantMessage strips trailing newlines', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="Hello world\n\n" model="test-model" />
 		</MockThemeProvider>,
@@ -981,7 +995,7 @@ test('AssistantMessage strips trailing newlines', t => {
 });
 
 test('AssistantMessage strips leading and trailing newlines', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage
 				message="\n\n\nContent\n\n\n"
@@ -1004,7 +1018,7 @@ test('AssistantMessage strips leading and trailing newlines', t => {
 });
 
 test('AssistantMessage strips carriage return characters', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="\r\n\r\nHello\r\n\r\n" model="test-model" />
 		</MockThemeProvider>,
@@ -1028,7 +1042,7 @@ test('AssistantMessage strips carriage return characters', t => {
 });
 
 test('AssistantMessage strips whitespace-only content to empty', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage message="   \n\n   " model="test-model" />
 		</MockThemeProvider>,
@@ -1053,7 +1067,7 @@ test('AssistantMessage strips whitespace-only content to empty', t => {
 });
 
 test('AssistantMessage preserves internal newlines', t => {
-	const {lastFrame} = render(
+	const {lastFrame} = renderTracked(
 		<MockThemeProvider>
 			<AssistantMessage
 				message="Line 1\nLine 2\nLine 3"

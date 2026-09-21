@@ -7,7 +7,7 @@ import {TRUNCATION_OUTPUT_LIMIT} from '@/constants';
 import {useTerminalWidth} from '@/hooks/useTerminalWidth';
 import {useTheme} from '@/hooks/useTheme';
 import {type BashExecutionState, bashExecutor} from '@/services/bash-executor';
-import type {NanocoderToolExport} from '@/types/core';
+import type {NanocoderToolExport, StructuredToolOutput} from '@/types/core';
 import {jsonSchema, tool} from '@/types/core';
 import {splitCommandForDisplay} from '@/utils/shell-command-display';
 import {truncateToolResult} from '@/utils/truncate-tool-result';
@@ -72,12 +72,17 @@ export function formatBashResultForLLM(result: BashExecutionState): string {
 const executeExecuteBash = async (
 	args: {command: string},
 	options?: {abortSignal?: AbortSignal},
-): Promise<string> => {
+): Promise<StructuredToolOutput> => {
 	const {promise} = bashExecutor.execute(args.command, {
 		signal: options?.abortSignal,
 	});
 	const result = await promise;
-	return formatBashResultForLLM(result);
+	// The model still gets plain text; isError carries the exit status to
+	// processToolUse, which is how --json and ACP learn the command failed.
+	return {
+		llmContent: formatBashResultForLLM(result),
+		isError: bashRunFailed(result),
+	};
 };
 
 const executeBashCoreTool = tool({

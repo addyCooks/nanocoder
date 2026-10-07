@@ -41,6 +41,7 @@ import type {
 	RetryLimitsConfig,
 	SystemPromptConfig,
 	TuneConfig,
+	VerifyConfig,
 } from '@/types/index';
 import {clampThreshold} from '@/utils/message-compression';
 import {logError, logWarning} from '@/utils/message-queue';
@@ -365,6 +366,32 @@ function loadRetryLimitsConfig(): RetryLimitsConfig {
 						0,
 						defaults.maxTruncatedTurns,
 					),
+				};
+			}
+			return null;
+		}) ?? {...defaults}
+	);
+}
+
+// Completion evidence ledger defaults: opt-in, so an empty `required` list
+// (nothing configured) disables the gate rather than guessing at a command.
+export const DEFAULT_VERIFY_CONFIG: VerifyConfig = {required: []};
+
+// Load the completion evidence ledger's required verification commands from
+// `nanocoder.verify` in agents.config.json.
+function loadVerifyConfig(): VerifyConfig {
+	const defaults = DEFAULT_VERIFY_CONFIG;
+
+	return (
+		loadHierarchicalConfig('agents.config.json', 'verify', config => {
+			const verify = config.nanocoder?.verify;
+			if (verify && typeof verify === 'object') {
+				return {
+					required: Array.isArray(verify.required)
+						? verify.required.filter(
+								(entry: unknown): entry is string => typeof entry === 'string',
+							)
+						: defaults.required,
 				};
 			}
 			return null;
@@ -767,6 +794,9 @@ function loadAppConfig(): AppConfig {
 	// Load agent-loop retry limits
 	const retries = loadRetryLimitsConfig();
 
+	// Load completion evidence ledger config
+	const verify = loadVerifyConfig();
+
 	// Load paste configuration
 	const paste = loadPasteConfig();
 
@@ -808,6 +838,7 @@ function loadAppConfig(): AppConfig {
 		sessions,
 		headless,
 		retries,
+		verify,
 		paste,
 		nanocoderTools,
 		alwaysAllow,
@@ -878,6 +909,16 @@ export function getRetryLimits(): RetryLimitsConfig {
 		maxMalformedRetries: retries?.maxMalformedRetries ?? MAX_MALFORMED_RETRIES,
 		maxTruncatedTurns: retries?.maxTruncatedTurns ?? MAX_TRUNCATED_TURNS,
 	};
+}
+
+/**
+ * Completion evidence ledger config, read live from the current app config so
+ * runtime edits (and tests that mutate `getAppConfig().verify`) are picked up.
+ * An empty `required` (the default) disables the gate.
+ * @public
+ */
+export function getVerifyConfig(): VerifyConfig {
+	return {required: getAppConfig().verify?.required ?? []};
 }
 
 // Function to reload the app configuration (useful after config file changes)

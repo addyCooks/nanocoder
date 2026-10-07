@@ -9,7 +9,7 @@ import {
 import AssistantMessage from '@/components/assistant-message';
 import AssistantReasoning from '@/components/assistant-reasoning';
 import {ErrorMessage, InfoMessage} from '@/components/message-box';
-import {getAppConfig, getRetryLimits} from '@/config/index';
+import {getAppConfig, getRetryLimits, getVerifyConfig} from '@/config/index';
 import {getShowUsageFooter} from '@/config/preferences';
 import {
 	MAX_COMPACT_RETRIES,
@@ -42,6 +42,11 @@ import type {
 } from '@/types/core';
 import {buildResponseUsageBounded} from '@/usage/response-usage';
 import {maybeAutoCompact} from '@/utils/auto-compact';
+import {
+	buildLedgerNudgeIfNeeded,
+	buildLedgerSummaryNote,
+	evaluateCompletionLedger,
+} from '@/utils/completion-ledger';
 import {buildCompletionNote} from '@/utils/completion-note';
 import {formatError} from '@/utils/error-formatter';
 import {MessageBuilder} from '@/utils/message-builder';
@@ -1395,12 +1400,59 @@ export const processAssistantResponse = async (
 			return;
 		}
 
+		// Completion evidence ledger: before letting the turn conclude, check
+		// whether every configured verification command has a passing
+		// execute_bash run newer than the most recent file edit. Opt-in - an
+		// unset `nanocoder.verify.required` leaves `requiredVerifyCommands`
+		// empty, so the gate is a no-op until the user names commands to
+		// enforce. Mode-agnostic like auto-diagnostics above - plan mode never
+		// mutates files, so the gate naturally never fires there either way.
+		const requiredVerifyCommands = getVerifyConfig().required;
+		const ledgerStatus = evaluateCompletionLedger(
+			updatedMessages,
+			requiredVerifyCommands,
+		);
+		const ledgerNudge = controller.signal.aborted
+			? null
+			: buildLedgerNudgeIfNeeded(ledgerStatus, updatedMessages);
+		if (ledgerNudge) {
+			const messagesWithNudge = [...updatedMessages, ledgerNudge];
+			setMessages(messagesWithNudge);
+			await flushAll();
+			await processAssistantResponse({
+				...params,
+				abortController: controller,
+				messages: messagesWithNudge,
+				conversationStartTime: startTime,
+				emptyTurnCount: 0,
+				malformedRetryCount: 0,
+				lastToolSignature: undefined,
+				repeatedToolCallCount: 0,
+				walkthroughLifecycle,
+			});
+			return;
+		}
+
 		// Flush any residual compact counts and task updates from turns that
 		// didn't emit reasoning so they persist in scrollback at conversation end.
 		params.onFinalAssistantText?.(cleanedContent);
 		await flushAll();
 
 		setIsGenerating(false);
+		const ledgerSummary = buildLedgerSummaryNote(
+			ledgerStatus,
+			requiredVerifyCommands,
+		);
+		if (ledgerSummary) {
+			addToChatQueue(
+				<InfoMessage
+					key={generateKey('ledger-summary')}
+					message={ledgerSummary}
+					hideBox={true}
+					marginBottom={1}
+				/>,
+			);
+		}
 		addToChatQueue(
 			<InfoMessage
 				key={generateKey('completion-time')}

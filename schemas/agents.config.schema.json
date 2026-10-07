@@ -140,6 +140,10 @@
 				"tune": {
 					"$ref": "#/definitions/TuneConfig",
 					"description": "Model mode defaults (tool profile, tool mode, model parameters)."
+				},
+				"verify": {
+					"$ref": "#/definitions/Partial%3CVerifyConfig%3E",
+					"description": "Completion evidence ledger. Unset or empty `required` disables it."
 				}
 			},
 			"type": "object",
@@ -549,6 +553,18 @@
 				"toolProfile": {
 					"enum": ["auto", "full", "minimal", "nano"],
 					"type": "string"
+				}
+			},
+			"type": "object",
+			"additionalProperties": false
+		},
+		"Partial<VerifyConfig>": {
+			"properties": {
+				"required": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
 				}
 			},
 			"type": "object",

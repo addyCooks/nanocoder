@@ -122,6 +122,10 @@ export async function runStreamingBashTool(
 			name: toolCall.function.name,
 			content,
 			isError: bashRunFailed(bashState),
+			// Lets the completion ledger (source/utils/completion-ledger.ts)
+			// recognize a passing verification run without re-parsing EXIT_CODE
+			// out of content.
+			structuredContent: {command: commandStr, exitCode: bashState.exitCode},
 		},
 		bashState,
 	};

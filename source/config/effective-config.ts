@@ -35,6 +35,7 @@ import {
 	DEFAULT_HEADLESS_CONFIG,
 	DEFAULT_RETRY_LIMITS,
 	DEFAULT_SESSION_CONFIG,
+	DEFAULT_VERIFY_CONFIG,
 	getAppConfig,
 	getDefaultPasteConfig,
 	loadDefaultMode,
@@ -381,6 +382,12 @@ function blockSpecs(): BlockSpec[] {
 			file: agents,
 			effective: config.retries,
 			defaults: DEFAULT_RETRY_LIMITS as unknown as Record<string, unknown>,
+		},
+		{
+			path: ['nanocoder', 'verify'],
+			file: agents,
+			effective: config.verify,
+			defaults: DEFAULT_VERIFY_CONFIG as unknown as Record<string, unknown>,
 		},
 		{
 			path: ['nanocoder', 'paste'],

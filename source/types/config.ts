@@ -152,6 +152,15 @@ export interface RetryLimitsConfig {
 	maxTruncatedTurns: number;
 }
 
+// Completion evidence ledger: commands that must have a fresh, passing
+// (exit 0) execute_bash run before the agent loop lets a turn with file
+// edits conclude. See source/utils/completion-ledger.ts.
+export interface VerifyConfig {
+	// Commands checked against execute_bash history, e.g. ["pnpm run test:all"].
+	// Opt-in: empty (the default) disables the gate entirely.
+	required: string[];
+}
+
 // Custom system prompt configuration
 export interface SystemPromptConfig {
 	// "replace" overrides the entire built-in prompt; "append" adds to the end.
@@ -338,6 +347,8 @@ export interface DiskNanocoderConfig {
 	sandbox?: boolean;
 	/** Commit each successful agent file edit (only that file) with a generated Conventional Commit message. Off by default. */
 	autoCommit?: boolean;
+	/** Completion evidence ledger. Unset or empty `required` disables it. */
+	verify?: Partial<VerifyConfig>;
 }
 
 /**
@@ -446,6 +457,9 @@ export interface AppConfig {
 
 	// Agent-loop retry limits (interactive conversation loop)
 	retries?: RetryLimitsConfig;
+
+	// Completion evidence ledger (interactive conversation loop)
+	verify?: VerifyConfig;
 }
 
 // MCP Server configuration with source tracking

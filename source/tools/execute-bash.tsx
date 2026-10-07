@@ -84,9 +84,13 @@ const executeExecuteBash = async (
 	const result = await promise;
 	// The model still gets plain text; isError carries the exit status to
 	// processToolUse, which is how --json and ACP learn the command failed.
+	// `structured` lets the completion ledger (source/utils/completion-ledger.ts)
+	// recognize a passing verification run without re-parsing EXIT_CODE out of
+	// llmContent.
 	return {
 		llmContent: formatBashResultForLLM(result),
 		isError: bashRunFailed(result),
+		structured: {command: args.command, exitCode: result.exitCode},
 	};
 };
 

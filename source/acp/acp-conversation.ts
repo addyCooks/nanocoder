@@ -3,6 +3,7 @@ import type {
 	PromptResponse,
 	ToolCallStatus,
 } from '@agentclientprotocol/sdk';
+import {ACP_SUBAGENT_NOTIFICATION} from '@/acp/acp-capabilities';
 import {requestToolPermission} from '@/acp/acp-permission';
 import {requestUserChoice} from '@/acp/acp-question';
 import type {AcpSession} from '@/acp/acp-session';
@@ -31,6 +32,7 @@ import {
 import {runInSessionCwdScope} from '@/services/session-cwd';
 import {
 	getAllSubagentProgress,
+	onSubagentRunEvent,
 	type SubagentEvent,
 } from '@/services/subagent-events';
 import {parseToolCalls} from '@/tool-calling/index';
@@ -99,7 +101,7 @@ function createSubagentApprovalHandler(
 	session: AcpSession,
 	conn: AgentSideConnection,
 ): (approval: PendingToolApproval) => Promise<boolean> {
-	return async ({toolCall, subagentName}) => {
+	return async ({toolCall, subagentName, subagentRunId}) => {
 		// The sub-agent's own model names its tool calls and shares an id space
 		// with the top-level ones, so prefix to keep the two cards distinct.
 		const announced: ToolCall = {
@@ -124,6 +126,7 @@ function createSubagentApprovalHandler(
 				conn,
 				subagentMeta,
 				session.abortController.signal,
+				subagentRunId ? {'nanocoder/childRunId': subagentRunId} : undefined,
 			);
 
 			if (permission === 'approved') {
@@ -178,6 +181,16 @@ export async function runAcpConversation(
 	const restoreApprovalHandler = setGlobalToolApprovalHandler(
 		createSubagentApprovalHandler(options.session, options.conn),
 	);
+	// Tell the client about each subagent run of this session as it happens.
+	// Sent in order, and never allowed to fail the turn: a client that ignores
+	// the notification sees exactly what it saw before it existed.
+	let sentSubagentEvents: Promise<void> = Promise.resolve();
+	const stopSubagentEvents = onSubagentRunEvent(event => {
+		if (event.sessionId !== options.session.sessionId) return;
+		sentSubagentEvents = sentSubagentEvents
+			.then(() => options.conn.notify(ACP_SUBAGENT_NOTIFICATION, {...event}))
+			.catch(() => {});
+	});
 	try {
 		// Each ACP session runs in its own working directory (#1707), and one
 		// editor process can host several chats. A read_file stub only makes
@@ -188,6 +201,8 @@ export async function runAcpConversation(
 			),
 		);
 	} finally {
+		stopSubagentEvents();
+		await sentSubagentEvents;
 		restoreApprovalHandler();
 	}
 }
@@ -708,6 +723,7 @@ async function runTurn(
 				abortSignal: abortController.signal,
 				sessionId: session.sessionId,
 				workingDirectory: session.cwd,
+				toolCallId: toolCall.id,
 			});
 			await finishTimelineCapture(session, timelineCapture);
 			isPolling = false;

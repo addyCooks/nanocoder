@@ -17,6 +17,8 @@ export interface PendingToolApproval {
 	toolCall: ToolCall;
 	/** Name of the subagent requesting approval */
 	subagentName: string;
+	/** Run ID of the subagent requesting approval, when it has one */
+	subagentRunId?: string;
 }
 
 // No handler — default to denied (safe fallback).

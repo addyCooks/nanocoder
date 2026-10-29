@@ -1,10 +1,12 @@
 import type {
 	AgentCapabilities,
+	McpServer,
 	ProtocolVersion,
 	SessionModeId,
 } from '@agentclientprotocol/sdk';
 import {PROTOCOL_VERSION} from '@agentclientprotocol/sdk';
 import type {DevelopmentMode} from '@/types/core';
+import type {MCPServer} from '@/types/index';
 
 const ACP_MODES: SessionModeId[] = [
 	'normal',
@@ -25,6 +27,8 @@ const MODE_MAP: Record<SessionModeId, DevelopmentMode> = {
 export function getAgentCapabilities(): AgentCapabilities {
 	return {
 		loadSession: true,
+		// stdio is always supported; Nanocoder has no SSE transport.
+		mcpCapabilities: {http: true},
 		providers: {},
 		sessionCapabilities: {
 			close: {},
@@ -33,6 +37,44 @@ export function getAgentCapabilities(): AgentCapabilities {
 			resume: {},
 		},
 	};
+}
+
+/**
+ * The MCP servers a client sent, as Nanocoder's own server config. Stdio and
+ * HTTP map across; the rest (SSE, MCP-over-ACP) are returned by name in
+ * `skipped` so the caller can say they were left out.
+ */
+export function acpMcpServersToConfig(servers: McpServer[] = []): {
+	servers: MCPServer[];
+	skipped: string[];
+} {
+	const toRecord = (pairs: Array<{name: string; value: string}> = []) =>
+		Object.fromEntries(pairs.map(({name, value}) => [name, value]));
+	const mapped: MCPServer[] = [];
+	const skipped: string[] = [];
+
+	for (const server of servers) {
+		if (!('type' in server)) {
+			mapped.push({
+				name: server.name,
+				transport: 'stdio',
+				command: server.command,
+				args: server.args ?? [],
+				env: toRecord(server.env),
+			});
+		} else if (server.type === 'http') {
+			mapped.push({
+				name: server.name,
+				transport: 'http',
+				url: server.url,
+				headers: toRecord(server.headers),
+			});
+		} else {
+			skipped.push(`${server.name} (${server.type})`);
+		}
+	}
+
+	return {servers: mapped, skipped};
 }
 
 export function getAvailableModes(): SessionModeId[] {

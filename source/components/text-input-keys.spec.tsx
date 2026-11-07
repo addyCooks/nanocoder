@@ -5,6 +5,7 @@ import test from 'ava';
 import chalk from 'chalk';
 import {render} from 'ink-testing-library';
 import React, {useState} from 'react';
+import {pasteEvents} from '../utils/terminal-paste';
 import TextInput from './text-input';
 
 /**
@@ -33,10 +34,14 @@ function ControlledTextInput({
 	valueRef,
 	initialValue = '',
 	showCursor = true,
+	focus = true,
+	onPaste,
 }: {
 	valueRef: ValueRef;
 	initialValue?: string;
 	showCursor?: boolean;
+	focus?: boolean;
+	onPaste?: (payload: string) => void;
 }) {
 	const [value, setValue] = useState(initialValue);
 	valueRef.current = value;
@@ -44,8 +49,9 @@ function ControlledTextInput({
 		<TextInput
 			value={value}
 			onChange={setValue}
-			focus={true}
+			focus={focus}
 			showCursor={showCursor}
+			onPaste={onPaste}
 		/>
 	);
 }
@@ -517,6 +523,82 @@ test('component Ctrl+E in multi-line input moves to the end of the current line'
 	await waitForValue(valueRef, v => v === 'alpha\nbravoX\ncharlie');
 	t.is(valueRef.current, 'alpha\nbravoX\ncharlie');
 	unmount();
+});
+
+// --- Bracketed paste (#1456) ---
+// cli.tsx strips pastes off stdin and emits them on pasteEvents, so a focused
+// TextInput has to subscribe itself or the paste is lost.
+
+test('a paste is inserted at the caret of a focused field', async t => {
+	const valueRef: ValueRef = {current: ''};
+	const {stdin, unmount} = render(
+		<ControlledTextInput valueRef={valueRef} initialValue="abcd" />,
+	);
+
+	await press(stdin, '\u001b[D'); // caret between c and d
+	pasteEvents.emit('paste', 'XY');
+	await waitForValue(valueRef, v => v === 'abcXYd');
+	t.is(valueRef.current, 'abcXYd');
+
+	// The caret follows the paste, so typing continues after it.
+	await press(stdin, 'Z');
+	await waitForValue(valueRef, v => v === 'abcXYZd');
+	t.is(valueRef.current, 'abcXYZd');
+	unmount();
+});
+
+test('a multi-line paste keeps its line breaks and drops trailing ones', async t => {
+	const valueRef: ValueRef = {current: ''};
+	const {unmount} = render(<ControlledTextInput valueRef={valueRef} />);
+
+	pasteEvents.emit('paste', 'one\r\ntwo\rthree\n');
+	await waitForValue(valueRef, v => v === 'one\ntwo\nthree');
+	t.is(valueRef.current, 'one\ntwo\nthree');
+	unmount();
+});
+
+test('a paste is ignored while the field is not focused', async t => {
+	const valueRef: ValueRef = {current: ''};
+	const {unmount} = render(
+		<ControlledTextInput valueRef={valueRef} initialValue="keep" focus={false} />,
+	);
+
+	pasteEvents.emit('paste', 'nope');
+	await new Promise(resolve => setTimeout(resolve, 50));
+	t.is(valueRef.current, 'keep');
+	unmount();
+});
+
+test('onPaste replaces the default insertion', async t => {
+	const valueRef: ValueRef = {current: ''};
+	const received: string[] = [];
+	const {unmount} = render(
+		<ControlledTextInput
+			valueRef={valueRef}
+			onPaste={payload => received.push(payload)}
+		/>,
+	);
+
+	pasteEvents.emit('paste', 'custom');
+	await new Promise(resolve => setTimeout(resolve, 50));
+	t.deepEqual(received, ['custom']);
+	t.is(valueRef.current, '');
+	unmount();
+});
+
+test('the paste listener is removed on unmount and when focus is lost', t => {
+	const before = pasteEvents.listenerCount('paste');
+	const valueRef: ValueRef = {current: ''};
+	const {unmount} = render(<ControlledTextInput valueRef={valueRef} />);
+	t.is(pasteEvents.listenerCount('paste'), before + 1);
+	unmount();
+	t.is(pasteEvents.listenerCount('paste'), before);
+
+	const unfocused = render(
+		<ControlledTextInput valueRef={valueRef} focus={false} />,
+	);
+	t.is(pasteEvents.listenerCount('paste'), before);
+	unfocused.unmount();
 });
 
 // --- Stock Ink (#1505) ---

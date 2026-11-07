@@ -2,6 +2,7 @@ import test from 'ava';
 import {renderWithTheme as render} from '@/test-utils/render-with-theme';
 import React from 'react';
 import stripAnsi from 'strip-ansi';
+import {pasteEvents} from '../../utils/terminal-paste';
 import type {TemplateField} from '../templates/provider-templates';
 import {
 	FieldInputView,
@@ -231,6 +232,23 @@ test('sensitive field masks the TextInput value', t => {
 	const output = lastFrame() || '';
 	t.regex(output, /\*\*\*\*/);
 	t.notRegex(output, /sk-secret-1234/);
+	unmount();
+});
+
+test('a paste reaches the masked API key field (#1456)', async t => {
+	const {changes, unmount} = renderField({
+		currentField: {
+			name: 'apiKey',
+			prompt: 'API key',
+			sensitive: true,
+		},
+	});
+	await wait();
+
+	pasteEvents.emit('paste', 'sk-or-pasted\n');
+	await wait();
+
+	t.deepEqual(changes, ['sk-or-pasted']);
 	unmount();
 });
 
